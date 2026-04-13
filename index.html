@@ -3,101 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNRU Smart Map - แผนที่อัจฉริยะ มรภ.พระนคร</title>
-    
+    <title>PNRU Smart Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
     <style>
         body { margin: 0; font-family: 'Sarabun', sans-serif; }
         #map { height: 100vh; width: 100%; }
-        
         .locate-button {
             position: absolute; bottom: 25px; right: 25px; z-index: 1000;
             background: white; padding: 12px; border-radius: 50%;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer;
-            width: 50px; height: 50px; display: flex;
-            align-items: center; justify-content: center;
+            width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
             color: #1a73e8; transition: all 0.3s;
         }
-        .locate-button:hover { background: #f1f3f4; transform: scale(1.1); }
-
         .custom-popup .leaflet-popup-content-wrapper { border-radius: 12px; padding: 8px; }
-        .popup-header {
-            font-weight: bold; color: #1a73e8; font-size: 16px;
-            border-bottom: 2px solid #e8eaed; margin-bottom: 8px; padding-bottom: 4px;
-        }
+        .popup-header { font-weight: bold; color: #1a73e8; font-size: 16px; border-bottom: 2px solid #e8eaed; margin-bottom: 8px; }
         .popup-row { margin: 4px 0; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
-<div class="locate-button" onclick="locateUser()" title="หาตำแหน่งของฉัน">
-    <i class="fa-solid fa-crosshairs fa-xl"></i>
-</div>
+<div class="locate-button" onclick="locateUser()"><i class="fa-solid fa-crosshairs fa-xl"></i></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 1. ตั้งค่าแผนที่
     var map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
     L.control.zoom({ position: 'topright' }).addTo(map);
+    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { attribution: 'Google Maps' }).addTo(map);
 
-    // 2. ใช้แผนที่ดาวเทียม Google Hybrid
-    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        attribution: 'Google Maps'
-    }).addTo(map);
-
-    // 3. ฟังก์ชันแยกสี
-    function getFeatureStyle(feature) {
+    function getStyle(feature) {
         let type = feature.properties.type;
-        let name = feature.properties.name || "";
-
-        if (type === 'gate' || name.includes("ประตู")) {
-            return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.5, weight: 3 };
-        } else if (type === 'canteen' || name.includes("โรงอาหาร")) {
-            return { color: "#ffa500", fillColor: "#ffa500", fillOpacity: 0.6, weight: 2 };
-        } else if (type === 'building' || name.includes("อาคาร") || name.includes("ตึก")) {
-            return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5, weight: 2 };
-        } else if (type === 'seating') {
-            return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4, weight: 2, dashArray: '5, 5' };
-        }
+        if (type === 'gate') return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.5, weight: 3 };
+        if (type === 'canteen') return { color: "#ffa500", fillColor: "#ffa500", fillOpacity: 0.6, weight: 2 };
+        if (type === 'building') return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5, weight: 2 };
+        if (type === 'seating') return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4, weight: 2, dashArray: '5, 5' };
         return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.4, weight: 2 };
     }
 
-    // 4. ดึงข้อมูลจากไฟล์ a.txt (ต้องรันผ่าน Server หรือ GitHub Pages)
     fetch('a.txt')
         .then(res => res.json())
         .then(data => {
             L.geoJSON(data, {
-                style: getFeatureStyle,
+                style: getStyle,
                 onEachFeature: function (feature, layer) {
-                    let popupHTML = `<div class='custom-popup'><div class='popup-header'>ข้อมูลสถานที่</div>`;
-                    for (let key in feature.properties) {
-                        if(key !== 'type') {
-                            popupHTML += `<div class='popup-row'><b>${key}:</b> ${feature.properties[key]}</div>`;
-                        }
-                    }
+                    let name = feature.properties.name || "สถานที่ไม่มีชื่อ";
+                    let desc = feature.properties.desc || "";
+                    let popupHTML = `<div class='custom-popup'><div class='popup-header'>${name}</div>`;
+                    if(desc) popupHTML += `<div class='popup-row'><b>ข้อมูล:</b> ${desc}</div>`;
                     popupHTML += `</div>`;
                     layer.bindPopup(popupHTML);
-
-                    layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.8, weight: 4 }); });
-                    layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.5, weight: 2 }); });
+                    layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.8 }); });
+                    layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.5 }); });
                 }
             }).addTo(map);
-        })
-        .catch(err => console.error("Error loading GeoJSON:", err));
+        });
 
-    // 5. ระบบ GPS
     var userMarker, userCircle;
     function locateUser() { map.locate({ setView: true, maxZoom: 18 }); }
-    function onLocationFound(e) {
+    map.on('locationfound', function(e) {
         if (userMarker) { map.removeLayer(userMarker); map.removeLayer(userCircle); }
         userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
         userCircle = L.circle(e.latlng, e.accuracy / 2).addTo(map);
-    }
-    map.on('locationfound', onLocationFound);
+    });
     locateUser();
 </script>
 </body>
