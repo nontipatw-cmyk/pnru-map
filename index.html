@@ -7,20 +7,107 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { margin: 0; font-family: 'Sarabun', sans-serif; }
-        #map { height: 100vh; width: 100%; }
-        .locate-button {
-            position: absolute; bottom: 25px; right: 25px; z-index: 1000;
-            background: white; padding: 12px; border-radius: 50%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer;
-            width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;
-            color: #1a73e8; transition: all 0.3s;
+   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { 
+        attribution: 'Google Maps' 
+    }).addTo(map);
+
+    // สไตล์ตามประเภทสถานที่
+    function getStyle(feature) {
+        const props = feature.properties || {};
+        let text = Object.values(props).join(" ");
+
+        if (text.includes("ประตู") || text.includes("ทางออก") || text.includes("ทางเข้า")) {
+            return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.45, weight: 3 };
         }
-        .custom-popup .leaflet-popup-content-wrapper { border-radius: 12px; padding: 8px; }
-        .popup-header { font-weight: bold; color: #1a73e8; font-size: 16px; border-bottom: 2px solid #e8eaed; margin-bottom: 8px; }
-        .popup-row { margin: 4px 0; font-size: 13px; }
-    </style>
+        if (text.includes("โรงอาหาร") || text.includes("ร้าน") || text.includes("ป้าเยาว์")) {
+            return { color: "#ff9800", fillColor: "#ff9800", fillOpacity: 0.55, weight: 2 };
+        }
+        if (text.includes("ที่นั่ง") || text.includes("เสรี")) {
+            return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.35, weight: 2, dashArray: '5, 5' };
+        }
+        if (text.includes("อาคาร") || text.includes("ตึก") || text.includes("สาขา")) {
+            return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.45, weight: 2 };
+        }
+        return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.4, weight: 2 };
+    }
+
+    fetch('a.txt')
+        .then(res => res.json())
+        .then(data => {
+            L.geoJSON(data, {
+                style: getStyle,
+                onEachFeature: function (feature, layer) {
+                    const props = feature.properties || {};
+                    
+                    // ดึงข้อความหลักสำหรับ label (รองรับ properties ที่เป็นชื่อไทย)
+                    let label = "สถานที่ไม่มีชื่อ";
+                    let description = "";
+
+                    for (let key in props) {
+                        if (props[key] && props[key].trim() !== "") {
+                            if (label === "สถานที่ไม่มีชื่อ") {
+                                label = props[key];
+                            } else {
+                                description = props[key];
+                            }
+                        }
+                    }
+
+                    // Tooltip แสดงถาวร (label)
+                    layer.bindTooltip(label, {
+                        permanent: true,
+                        direction: 'center',
+                        className: 'custom-label',
+                        offset: [0, 0],
+                        opacity: 0.95
+                    }).openTooltip();
+
+                    // Popup เมื่อคลิก
+                    let popupHTML = `
+                        <div class="custom-popup">
+                            <div class="popup-header">${label}</div>
+                            ${description ? `<div class="popup-row"><b>รายละเอียด:</b> ${description}</div>` : ''}
+                        </div>
+                    `;
+                    layer.bindPopup(popupHTML);
+
+                    // Hover effect
+                    layer.on('mouseover', function() {
+                        this.setStyle({ fillOpacity: 0.8 });
+                    });
+                    layer.on('mouseout', function() {
+                        this.setStyle(getStyle(feature));
+                    });
+                }
+            }).addTo(map);
+        })
+        .catch(err => {
+            console.error("โหลด GeoJSON ล้มเหลว:", err);
+            alert("ไม่สามารถโหลดไฟล์แผนที่ได้ กรุณาตรวจสอบไฟล์ a.txt");
+        });
+
+    // Locate User (คงเดิม)
+    var userMarker, userCircle;
+    function locateUser() { 
+        map.locate({ setView: true, maxZoom: 18 }); 
+    }
+    map.on('locationfound', function(e) {
+        if (userMarker) { 
+            map.removeLayer(userMarker); 
+            map.removeLayer(userCircle); 
+        }
+        userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+        userCircle = L.circle(e.latlng, { radius: e.accuracy / 2, color: '#1a73e8' }).addTo(map);
+    });
+
+    // เรียกหาตำแหน่งผู้ใช้ทันที
+    locateUser();
+</script>
 </head>
 <body>
 
