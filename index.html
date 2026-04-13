@@ -3,71 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNRU Interactive Map</title>
+    <title>PNRU Interactive Map - แผนที่ มรภ.พระนคร</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        /* ตั้งค่าขนาดหน้าจอแผนที่ */
-        #map {
-            height: 100vh;
-            width: 100%;
+        body { margin: 0; font-family: 'Sarabun', sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* ตกแต่งหน้าต่างข้อมูล (Popup) */
+        .custom-popup .leaflet-popup-content-wrapper {
+            background: #ffffff;
+            color: #333;
+            border-radius: 12px;
+            padding: 5px;
         }
-        body { margin: 0; padding: 0; font-family: 'Tahoma', sans-serif; }
+        .popup-img { 
+            width: 100%; 
+            border-radius: 8px; 
+            margin-bottom: 8px;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. ตั้งค่าแผนที่เริ่มต้น (พิกัดกลาง มรภ.พระนคร)
+    var map = L.map('map').setView([13.878, 100.591], 16);
 
-    <script>
-        // 3. สร้างแผนที่และตั้งค่าพิกัดเริ่มต้น (บริเวณ PNRU)
-        // [Latitude, Longitude], Zoom Level
-        var map = L.map('map').setView([13.883, 100.591], 17);
+    // 2. ใช้ Layer แผนที่ดาวเทียม Google Hybrid (เห็นทั้งรูปตึกและชื่อถนน)
+    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: 'Map data &copy; Google Maps'
+    }).addTo(map);
 
-        // 4. ใส่พื้นหลังแผนที่ (ในที่นี้ใช้ OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
+    // --- ส่วนที่ 1: ขอบเขตมหาวิทยาลัย (จากข้อมูล GeoJSON ที่คุณวาดมา) ---
+    var pnruBoundary = [
+        [13.879457, 100.589790], [13.880091, 100.588699], [13.879508, 100.588439],
+        [13.878907, 100.588309], [13.878002, 100.588218], [13.877374, 100.588172],
+        [13.875781, 100.588034], [13.874431, 100.587942], [13.872795, 100.590826],
+        [13.873950, 100.591529], [13.874489, 100.590478], [13.876635, 100.591683],
+        [13.874585, 100.595268], [13.875827, 100.596010], [13.876430, 100.595006],
+        [13.875263, 100.594291], [13.876652, 100.591750], [13.877928, 100.592488],
+        [13.879457, 100.589790]
+    ];
+
+    L.polygon(pnruBoundary, {
+        color: "#00FF00", 
+        fillOpacity: 0.1, 
+        weight: 2, 
+        dashArray: '5, 5' // เส้นประล้อมรอบมหาลัย
+    }).addTo(map).bindPopup("ขอบเขตมหาวิทยาลัยราชภัฏพระนคร");
+
+
+    // --- ส่วนที่ 2: ฟังก์ชันสำหรับสร้างอาคาร (แบบ Polygon) ---
+    function createBuilding(coords, name, description, imageUrl) {
+        var building = L.polygon(coords, {
+            color: '#FFD700',      // สีเส้นขอบตึก (สีทอง)
+            fillColor: '#FFD700',
+            fillOpacity: 0.5,
+            weight: 2
         }).addTo(map);
 
-        // 5. ข้อมูลอาคาร (ตัวอย่างพิกัดจำลอง)
-        var buildings = [
-            {
-                name: "หอประชุมพิฆเนศวร",
-                coords: [13.8824, 100.5908],
-                desc: "อาคารหอประชุมใหญ่ สำหรับจัดงานพิธีและกิจกรรมสำคัญ"
-            },
-            {
-                name: "อาคารเรียนรวม (ตัวอย่าง)",
-                coords: [13.8835, 100.5920],
-                desc: "ห้องเรียนรวมและศูนย์คอมพิวเตอร์"
-            }
-        ];
+        var content = `
+            <div class="custom-popup" style="width:200px">
+                <img src="${imageUrl}" class="popup-img">
+                <h3 style="margin:0; color:#1a73e8;">${name}</h3>
+                <p style="font-size:12px; line-height:1.5;">${description}</p>
+            </div>
+        `;
+        building.bindPopup(content);
 
-        // 6. วนลูปสร้างหมุด (Marker) และ Popup
-        buildings.forEach(function(place) {
-            var marker = L.marker(place.coords).addTo(map);
-            
-            // เมื่อคลิกที่หมุดจะขึ้นชื่อและรายละเอียด
-            marker.bindPopup("<b>" + place.name + "</b><br>" + place.desc);
+        // เอฟเฟกต์เวลาเอาเมาส์ชี้ (Hover)
+        building.on('mouseover', function() {
+            this.setStyle({ fillOpacity: 0.8, weight: 4 });
         });
+        building.on('mouseout', function() {
+            this.setStyle({ fillOpacity: 0.5, weight: 2 });
+        });
+    }
 
-        // 7. (Optional) ลองทำแบบ Polygon จิ้มเป็นพื้นที่ตึก
-        var pigneshHall = L.polygon([
-            [13.8822, 100.5905],
-            [13.8826, 100.5905],
-            [13.8826, 100.5912],
-            [13.8822, 100.5912]
-        ], {
-            color: 'red',
-            fillColor: '#f03',
-            fillOpacity: 0.3
-        }).addTo(map);
+    // --- ส่วนที่ 3: ใส่ข้อมูลตึกรายตัว (เอาพิกัดหลังคาตึกมาใส่) ---
+    
+    // ตัวอย่าง: อาคารคณะเทคโนโลยีอุตสาหกรรม (พิกัดที่คุณเคยให้มา)
+    // หมายเหตุ: ตรงนี้ถ้าอยากให้เป็นรูปตึกสวยๆ ต้องวาด 4 มุมแบบ Polygon นะครับ 
+    // อันนี้ผมทำเป็นสี่เหลี่ยมรอบจุดที่คุณให้มาก่อน
+    createBuilding(
+        [[13.8789, 100.5891], [13.8790, 100.5891], [13.8790, 100.5894], [13.8789, 100.5894]],
+        "คณะเทคโนโลยีอุตสาหกรรม",
+        "อาคารเรียนหลักและห้องปฏิบัติการทางวิศวกรรม",
+        "https://via.placeholder.com/200x120?text=Industrial+Tech"
+    );
 
-        pigneshHall.bindPopup("<b>บริเวณหอประชุมพิฆเนศวร</b><br>คลิกเพื่อดูตารางงาน");
+    // ตัวอย่าง: หอประชุมพิฆเนศวร
+    createBuilding(
+        [[13.8822, 100.5905], [13.8826, 100.5905], [13.8826, 100.5912], [13.8822, 100.5912]],
+        "หอประชุมพิฆเนศวร",
+        "อาคารหอประชุมขนาดใหญ่สำหรับพิธีพระราชทานปริญญาบัตรและกิจกรรมสำคัญ",
+        "https://via.placeholder.com/200x120?text=Pignesh+Hall"
+    );
 
-    </script>
+</script>
 </body>
 </html>
