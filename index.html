@@ -4,188 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PNRU Smart Map</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    // สร้างแผนที่
-    var map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
-    L.control.zoom({ position: 'topright' }).addTo(map);
-
-    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { 
-        attribution: 'Google Maps' 
-    }).addTo(map);
-
-    // สไตล์
-    function getStyle(feature) {
-        const text = JSON.stringify(feature.properties || {}).toLowerCase();
-        if (text.includes("ประตู") || text.includes("ทางออก") || text.includes("ทางเข้า")) 
-            return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.5, weight: 3 };
-        if (text.includes("โรงอาหาร") || text.includes("ร้าน")) 
-            return { color: "#ff9800", fillColor: "#ff9800", fillOpacity: 0.6, weight: 2 };
-        if (text.includes("ที่นั่ง") || text.includes("เสรี")) 
-            return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4, weight: 2, dashArray: '5,5' };
-        if (text.includes("อาคาร") || text.includes("ตึก")) 
-            return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5, weight: 2 };
-        return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.45, weight: 2 };
-    }
-
-    // โหลด GeoJSON
-    fetch('data.geojson')   // ← เปลี่ยนเป็นชื่อไฟล์ใหม่
-        .then(response => {
-            if (!response.ok) throw new Error('ไม่พบไฟล์ data.geojson');
-            return response.json();
-        })
-        .then(data => {
-            console.log("โหลด GeoJSON สำเร็จ", data); // ตรวจสอบใน Console
-
-            L.geoJSON(data, {
-                style: getStyle,
-                onEachFeature: function (feature, layer) {
-                    const props = feature.properties || {};
-                    let label = Object.values(props).find(v => v && v.trim() !== "") || "สถานที่ไม่มีชื่อ";
-                    let description = Object.values(props).slice(1).join(" ") || "";
-
-                    // Tooltip แสดงถาวร
-                    layer.bindTooltip(label, {
-                        permanent: true,
-                        direction: 'center',
-                        className: 'custom-label',
-                        offset: [0, 0]
-                    }).openTooltip();
-
-                    // Popup
-                    layer.bindPopup(`
-                        <div class="custom-popup">
-                            <div class="popup-header">${label}</div>
-                            ${description ? `<div class="popup-row"><b>รายละเอียด:</b> ${description}</div>` : ''}
-                        </div>
-                    `);
-
-                    layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.85 }));
-                    layer.on('mouseout', () => layer.setStyle(getStyle(feature)));
-                }
-            }).addTo(map);
-        })
-        .catch(err => {
-            console.error("เกิดข้อผิดพลาด:", err);
-            document.getElementById('map').innerHTML = `
-                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:red;">
-                    <h2>❌ ไม่สามารถโหลดแผนที่ได้</h2>
-                    <p>${err.message}</p>
-                    <p style="font-size:14px;color:#666;">ตรวจสอบว่าไฟล์ <b>data.geojson</b> อยู่ในโฟลเดอร์เดียวกับ index.html และ commit แล้ว</p>
-                </div>`;
-        });
-
-    // Locate User
-    var userMarker, userCircle;
-    function locateUser() { map.locate({ setView: true, maxZoom: 18 }); }
-    map.on('locationfound', function(e) {
-        if (userMarker) map.removeLayer(userMarker);
-        if (userCircle) map.removeLayer(userCircle);
-        userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
-        userCircle = L.circle(e.latlng, { radius: e.accuracy / 2, color: '#1a73e8' }).addTo(map);
-    });
-    locateUser();
-</script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Sarabun', sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .custom-label {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 2px solid #1a73e8 !important;
+            border-radius: 8px !important;
+            padding: 4px 10px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            color: #111 !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .locate-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 22px;
+            color: #1a73e8;
+        }
+    </style>
 </head>
 <body>
+    <div id="map"></div>
+    <div class="locate-button" onclick="locateUser()">
+        <i class="fa-solid fa-crosshairs"></i>
+    </div>
 
-<div id="map"></div>
-<div class="locate-button" onclick="locateUser()"><i class="fa-solid fa-crosshairs fa-xl"></i></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
+    
+    <script>
+        // สร้างแผนที่
+        const map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
+        L.control.zoom({ position: 'topright' }).addTo(map);
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    var map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
-    L.control.zoom({ position: 'topright' }).addTo(map);
-    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { 
-        attribution: 'Google Maps' 
-    }).addTo(map);
+        // Google Satellite + Labels
+        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            attribution: 'Google Maps'
+        }).addTo(map);
 
-    // ฟังก์ชันสไตล์ (ปรับแต่งได้ตามต้องการ)
-    function getStyle(feature) {
-        let prop = feature.properties || {};
-        let text = Object.values(prop)[0] || "";  // เอาค่าของ properties แรก
-
-        if (text.includes("ประตู") || text.includes("ทางออก") || text.includes("ทางเข้า")) {
-            return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.45, weight: 3 };
+        // ฟังก์ชันสไตล์
+        function getStyle(feature) {
+            const text = JSON.stringify(feature.properties || {}).toLowerCase();
+            if (text.includes("ประตู") || text.includes("ทางออก") || text.includes("ทางเข้า")) {
+                return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.5, weight: 3 };
+            }
+            if (text.includes("โรงอาหาร") || text.includes("ร้าน") || text.includes("ป้าเยาว์")) {
+                return { color: "#ff9800", fillColor: "#ff9800", fillOpacity: 0.6, weight: 2 };
+            }
+            if (text.includes("ที่นั่ง") || text.includes("เสรี")) {
+                return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4, weight: 2, dashArray: '5,5' };
+            }
+            if (text.includes("อาคาร") || text.includes("ตึก") || text.includes("สาขา")) {
+                return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5, weight: 2 };
+            }
+            return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.45, weight: 2 };
         }
-        if (text.includes("โรงอาหาร") || text.includes("ร้าน")) {
-            return { color: "#ffa502", fillColor: "#ffa502", fillOpacity: 0.55, weight: 2 };
-        }
-        if (text.includes("ที่นั่ง") || text.includes("เสรี")) {
-            return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.35, weight: 2, dashArray: '4, 4' };
-        }
-        if (text.includes("อาคาร") || text.includes("ตึก")) {
-            return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.4, weight: 2 };
-        }
-        return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.4, weight: 2 };
-    }
 
-    fetch('a.txt')   // หรือเปลี่ยนเป็น a.geojson ถ้าคุณเปลี่ยนชื่อไฟล์
-        .then(res => res.json())
-        .then(data => {
-            L.geoJSON(data, {
-                style: getStyle,
-                onEachFeature: function (feature, layer) {
-                    const props = feature.properties || {};
-                    
-                    // หาค่าข้อความที่จะแสดง (properties ส่วนใหญ่มีคีย์เดียวที่เป็นชื่อ)
-                    let label = "";
-                    let description = "";
+        // โหลด GeoJSON
+        fetch('data.geojson')
+            .then(res => {
+                if (!res.ok) throw new Error('ไม่พบไฟล์ data.geojson');
+                return res.json();
+            })
+            .then(data => {
+                L.geoJSON(data, {
+                    style: getStyle,
+                    onEachFeature: function(feature, layer) {
+                        const props = feature.properties || {};
+                        let label = "สถานที่ไม่มีชื่อ";
+                        let desc = "";
 
-                    for (let key in props) {
-                        if (key && props[key]) {
-                            if (!label) label = props[key];           // ค่าหลัก (ชื่อสถานที่)
-                            else description = props[key];            // คำอธิบายเพิ่มเติม
+                        // ดึงข้อความแรกเป็น label
+                        for (let key in props) {
+                            if (props[key] && props[key].trim() !== "") {
+                                if (label === "สถานที่ไม่มีชื่อ") {
+                                    label = props[key];
+                                } else {
+                                    desc = props[key];
+                                }
+                                break;   // ใช้แค่ตัวแรกเป็น label
+                            }
                         }
+
+                        // แสดง label ถาวร
+                        layer.bindTooltip(label, {
+                            permanent: true,
+                            direction: 'center',
+                            className: 'custom-label',
+                            offset: [0, 0]
+                        }).openTooltip();
+
+                        // Popup เมื่อคลิก
+                        layer.bindPopup(`
+                            <div style="font-family:Sarabun,sans-serif; min-width:200px;">
+                                <b style="color:#1a73e8; font-size:16px;">${label}</b>
+                                ${desc ? `<br><small>รายละเอียด: ${desc}</small>` : ''}
+                            </div>
+                        `);
+
+                        // Hover
+                        layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.85 }));
+                        layer.on('mouseout', () => layer.setStyle(getStyle(feature)));
                     }
+                }).addTo(map);
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('map').innerHTML = `
+                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#d32f2f;">
+                        <h2>❌ ไม่สามารถโหลดแผนที่ได้</h2>
+                        <p>กรุณาตรวจสอบว่าไฟล์ <b>data.geojson</b> อยู่ในโฟลเดอร์เดียวกับ index.html</p>
+                        <p style="font-size:14px;">${err.message}</p>
+                    </div>`;
+            });
 
-                    if (!label) label = "สถานที่ไม่มีชื่อ";
-
-                    // Tooltip แสดงตลอดเวลา (permanent)
-                    layer.bindTooltip(label, {
-                        permanent: true,
-                        direction: 'center',
-                        className: 'custom-label',
-                        offset: [0, 0],
-                        opacity: 0.95
-                    }).openTooltip();
-
-                    // Popup เมื่อคลิก (แสดงรายละเอียดเพิ่ม)
-                    let popupHTML = `
-                        <div class="custom-popup">
-                            <div class="popup-header">${label}</div>
-                            ${description ? `<div class="popup-row"><b>รายละเอียด:</b> ${description}</div>` : ''}
-                        </div>
-                    `;
-                    layer.bindPopup(popupHTML);
-
-                    // Hover effect
-                    layer.on('mouseover', function() {
-                        this.setStyle({ fillOpacity: Math.min(this.options.fillOpacity + 0.3, 0.9) });
-                    });
-                    layer.on('mouseout', function() {
-                        this.setStyle(getStyle(feature));  // กลับไปสไตล์เดิม
-                    });
-                }
-            }).addTo(map);
-        })
-        .catch(err => console.error("โหลด GeoJSON ล้มเหลว:", err));
-
-    // ส่วน locate user (คงเดิม)
-    var userMarker, userCircle;
-    function locateUser() { 
-        map.locate({ setView: true, maxZoom: 18 }); 
-    }
-    map.on('locationfound', function(e) {
-        if (userMarker) { map.removeLayer(userMarker); map.removeLayer(userCircle); }
-        userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
-        userCircle = L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(map);
-    });
-    locateUser();
-</script>
+        // ปุ่มหาตำแหน่ง
+        let userMarker, userCircle;
+        function locateUser() {
+            map.locate({ setView: true, maxZoom: 18 });
+        }
+        map.on('locationfound', function(e) {
+            if (userMarker) map.removeLayer(userMarker);
+            if (userCircle) map.removeLayer(userCircle);
+            userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+            userCircle = L.circle(e.latlng, { radius: e.accuracy/2, color: '#1a73e8' }).addTo(map);
+        });
+        locateUser();
+    </script>
 </body>
 </html>
