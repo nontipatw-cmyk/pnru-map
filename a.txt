@@ -1,79 +1,14 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNRU Campus Map - Interactive</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
-    <style>
-        body { margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100%; }
-        
-        /* สไตล์หน้าต่าง Popup */
-        .leaflet-popup-content-wrapper {
-            font-family: 'Tahoma', sans-serif;
-            border-radius: 8px;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="map"></div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <script>
-        // 1. ตั้งค่าแผนที่ (พิกัดกลาง มรภ.พระนคร)
-        var map = L.map('map').setView([13.878, 100.590], 17);
-
-        // 2. เพิ่ม Layer แผนที่จาก OpenStreetMap
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // 3. ข้อมูลพิกัด (GeoJSON) ที่ใส่ "type" เพื่อแยกสีแล้ว
-        var geoData = {
-          "type": "FeatureCollection",
-          "features": [
-            { "type": "Feature", "properties": { "name": "ประตู 2 (ทางออก)", "desc": "ปิดช่วง 2-3 ทุ่ม", "type": "gate" }, "geometry": { "type": "Polygon", "coordinates": [[[100.589758, 13.879466], [100.589737, 13.879426], [100.589779, 13.879405], [100.589802, 13.879444], [100.589758, 13.879466]]] } },
-            { "type": "Feature", "properties": { "name": "ประตู 1 (ทางเข้า)", "desc": "", "type": "gate" }, "geometry": { "type": "Polygon", "coordinates": [[[100.591282, 13.878588], [100.591241, 13.878538], [100.591330, 13.878496], [100.591359, 13.878546], [100.591282, 13.878588]]] } },
-            { "type": "Feature", "properties": { "name": "อาคารเรียน อุตสาหการ", "desc": "ที่นั่งประจำสาขา", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588432, 13.878204], [100.588322, 13.878023], [100.588750, 13.877757], [100.588848, 13.877919], [100.588865, 13.878058], [100.588432, 13.878204]]] } },
-            { "type": "Feature", "properties": { "name": "ตึกสถาปัตย์", "desc": "", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588912, 13.878433], [100.588835, 13.878319], [100.589065, 13.878327], [100.588912, 13.878433]]] } },
-            { "type": "Feature", "properties": { "name": "อาคาร 42 (โอ่งแดง)", "desc": "อาคารเรียนรวม", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588323, 13.877345], [100.588208, 13.877159], [100.588574, 13.876939], [100.588323, 13.877345]]] } },
-            { "type": "Feature", "properties": { "name": "อาคารสอบ GE", "desc": "กลางภาค/ปลายภาค", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.589390, 13.878304], [100.589303, 13.878179], [100.589676, 13.877970], [100.589744, 13.878105], [100.589390, 13.878304]]] } },
-            { "type": "Feature", "properties": { "name": "โรงอาหาร 2 (โรงร้อน)", "desc": "", "type": "canteen" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588873, 13.876791], [100.588770, 13.876637], [100.589051, 13.876480], [100.589152, 13.876629], [100.588873, 13.876791]]] } },
-            { "type": "Feature", "properties": { "name": "โรงอาหาร 1 (โรงเย็น)", "desc": "", "type": "canteen" }, "geometry": { "type": "Polygon", "coordinates": [[[100.589917, 13.876988], [100.589812, 13.876802], [100.590234, 13.876786], [100.589917, 13.876988]]] } },
-            { "type": "Feature", "properties": { "name": "ที่นั่งเสรี (ร้านป้าเยาว์)", "desc": "จุดพักผ่อน", "type": "seating" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588891, 13.877690], [100.588836, 13.877490], [100.589348, 13.877460], [100.588891, 13.877690]]] } }
-          ]
-        };
-
-        // 4. ฟังก์ชันจัดการสีและสไตล์ตามประเภท (Type)
-        function getStyle(feature) {
-            switch (feature.properties.type) {
-                case 'gate':     return { color: "#ff4d4d", weight: 4, fillOpacity: 0.2 }; // สีแดง (ประตู)
-                case 'building': return { color: "#1e90ff", weight: 2, fillOpacity: 0.5 }; // สีฟ้า (ตึก)
-                case 'canteen':  return { color: "#ffa500", weight: 2, fillOpacity: 0.6 }; // สีส้ม (โรงอาหาร)
-                case 'seating':  return { color: "#32cd32", weight: 2, dashArray: '5, 10', fillOpacity: 0.3 }; // สีเขียวเส้นประ (ที่นั่ง)
-                default:         return { color: "#999", weight: 1 };
-            }
-        }
-
-        // 5. นำข้อมูลขึ้นแผนที่
-        L.geoJSON(geoData, {
-            style: getStyle,
-            onEachFeature: function (feature, layer) {
-                // ผูก Popup แสดงชื่อและคำอธิบาย
-                var popupContent = "<b>" + feature.properties.name + "</b><br>" + (feature.properties.desc || "ไม่มีข้อมูลเพิ่มเติม");
-                layer.bindPopup(popupContent);
-                
-                // เปลี่ยนสีขอบเมื่อเอาเมาส์ไปชี้ (Optional)
-                layer.on('mouseover', function () { this.setStyle({ weight: 5, color: '#666' }); });
-                layer.on('mouseout', function () { L.geoJSON().resetStyle(this); layer.setStyle(getStyle(feature)); });
-            }
-        }).addTo(map);
-
-    </script>
-</body>
-</html>
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "ประตู 2 (ทางออก)", "desc": "ปิดช่วง 2-3 ทุ่ม", "type": "gate" }, "geometry": { "type": "Polygon", "coordinates": [[[100.589758, 13.879466], [100.589737, 13.879426], [100.589779, 13.879405], [100.589802, 13.879444], [100.589758, 13.879466]]] } },
+    { "type": "Feature", "properties": { "name": "ประตู 1 (ทางเข้า)", "desc": "", "type": "gate" }, "geometry": { "type": "Polygon", "coordinates": [[[100.591282, 13.878588], [100.591241, 13.878538], [100.591330, 13.878496], [100.591359, 13.878546], [100.591282, 13.878588]]] } },
+    { "type": "Feature", "properties": { "name": "อาคารเรียน อุตสาหการ", "desc": "ที่นั่งประจำสาขา", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588432, 13.878204], [100.588322, 13.878023], [100.588750, 13.877757], [100.588848, 13.877919], [100.588865, 13.878058], [100.588432, 13.878204]]] } },
+    { "type": "Feature", "properties": { "name": "ตึกสถาปัตย์", "desc": "", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588912, 13.878433], [100.588835, 13.878319], [100.589065, 13.878327], [100.588912, 13.878433]]] } },
+    { "type": "Feature", "properties": { "name": "อาคาร 42 (โอ่งแดง)", "desc": "อาคารเรียนรวม", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588323, 13.877345], [100.588208, 13.877159], [100.588574, 13.876939], [100.588323, 13.877345]]] } },
+    { "type": "Feature", "properties": { "name": "อาคารสอบ GE", "desc": "กลางภาค/ปลายภาค", "type": "building" }, "geometry": { "type": "Polygon", "coordinates": [[[100.589390, 13.878304], [100.589303, 13.878179], [100.589676, 13.877970], [100.589744, 13.878105], [100.589390, 13.878304]]] } },
+    { "type": "Feature", "properties": { "name": "โรงอาหาร 2 (โรงร้อน)", "desc": "", "type": "canteen" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588873, 13.876791], [100.588770, 13.876637], [100.589051, 13.876480], [100.589152, 13.876629], [100.588873, 13.876791]]] } },
+    { "type": "Feature", "properties": { "name": "โรงอาหาร 1 (โรงเย็น)", "desc": "", "type": "canteen" }, "geometry": { "type": "Polygon", "coordinates": [[[100.589917, 13.876988], [100.589812, 13.876802], [100.590234, 13.876786], [100.589917, 13.876988]]] } },
+    { "type": "Feature", "properties": { "name": "ที่นั่งเสรี (ร้านป้าเยาว์)", "desc": "จุดพักผ่อน", "type": "seating" }, "geometry": { "type": "Polygon", "coordinates": [[[100.588891, 13.877690], [100.588836, 13.877490], [100.589348, 13.877460], [100.588891, 13.877690]]] } }
+  ]
+}
