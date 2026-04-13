@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNRU Interactive Map</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* ตั้งค่าขนาดหน้าจอแผนที่ */
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        body { margin: 0; padding: 0; font-family: 'Tahoma', sans-serif; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 3. สร้างแผนที่และตั้งค่าพิกัดเริ่มต้น (บริเวณ PNRU)
+        // [Latitude, Longitude], Zoom Level
+        var map = L.map('map').setView([13.883, 100.591], 17);
+
+        // 4. ใส่พื้นหลังแผนที่ (ในที่นี้ใช้ OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 5. ข้อมูลอาคาร (ตัวอย่างพิกัดจำลอง)
+        var buildings = [
+            {
+                name: "หอประชุมพิฆเนศวร",
+                coords: [13.8824, 100.5908],
+                desc: "อาคารหอประชุมใหญ่ สำหรับจัดงานพิธีและกิจกรรมสำคัญ"
+            },
+            {
+                name: "อาคารเรียนรวม (ตัวอย่าง)",
+                coords: [13.8835, 100.5920],
+                desc: "ห้องเรียนรวมและศูนย์คอมพิวเตอร์"
+            }
+        ];
+
+        // 6. วนลูปสร้างหมุด (Marker) และ Popup
+        buildings.forEach(function(place) {
+            var marker = L.marker(place.coords).addTo(map);
+            
+            // เมื่อคลิกที่หมุดจะขึ้นชื่อและรายละเอียด
+            marker.bindPopup("<b>" + place.name + "</b><br>" + place.desc);
+        });
+
+        // 7. (Optional) ลองทำแบบ Polygon จิ้มเป็นพื้นที่ตึก
+        var pigneshHall = L.polygon([
+            [13.8822, 100.5905],
+            [13.8826, 100.5905],
+            [13.8826, 100.5912],
+            [13.8822, 100.5912]
+        ], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.3
+        }).addTo(map);
+
+        pigneshHall.bindPopup("<b>บริเวณหอประชุมพิฆเนศวร</b><br>คลิกเพื่อดูตารางงาน");
+
+    </script>
+</body>
+</html>
