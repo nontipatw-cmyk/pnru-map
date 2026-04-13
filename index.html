@@ -3,107 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNRU Interactive Map</title>
+    <title>PNRU Smart Map - แผนที่อัจฉริยะ มรภ.พระนคร</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <style>
         body { margin: 0; font-family: 'Sarabun', sans-serif; }
         #map { height: 100vh; width: 100%; }
         
-        /* ตกแต่ง Popup */
-        .popup-content {
-            font-size: 14px;
-            line-height: 1.6;
-        }
-        .popup-title {
+        /* ปุ่ม Locate ตรงมุมจอ */
+        .locate-button {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            z-index: 1000;
+            background: white;
+            padding: 12px;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: #1a73e8;
-            font-weight: bold;
-            border-bottom: 1px solid #ccc;
-            margin-bottom: 5px;
-            display: block;
+            transition: all 0.3s;
         }
+        .locate-button:hover { background: #f1f3f4; transform: scale(1.1); }
+
+        /* ปรับแต่ง Popup ให้ดูโปร */
+        .custom-popup .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            padding: 8px;
+        }
+        .popup-header {
+            font-weight: bold;
+            color: #1a73e8;
+            font-size: 16px;
+            border-bottom: 2px solid #e8eaed;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+        }
+        .popup-row { margin: 4px 0; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
 
-<script>
-    // 1. สร้างแผนที่ (พิกัดกลาง มรภ.พระนคร)
-    var map = L.map('map').setView([13.878, 100.591], 17);
+<div class="locate-button" onclick="locateUser()" title="หาตำแหน่งของฉัน">
+    <i class="fa-solid fa-crosshairs fa-xl"></i>
+</div>
 
-    // 2. ใช้แผนที่ดาวเทียม Google Hybrid
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. ตั้งค่าแผนที่
+    var map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
+    
+    // ย้ายปุ่มซูมไปไว้ที่อื่นไม่ให้ทับกับปุ่มเรา
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    // 2. แผนที่ดาวเทียม Google
     L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: 'Google Maps'
     }).addTo(map);
 
-    // 3. ระบบดึงข้อมูลจากไฟล์ a.txt มาวาดเป็นตึกและจุดต่างๆ
+    // 3. ฟังก์ชันดึงข้อมูลจาก a.txt และแยกประเภทสี
     fetch('a.txt')
         .then(response => response.json())
         .then(data => {
             L.geoJSON(data, {
                 style: function(feature) {
-                    return {
-                        color: "#FFD700", // สีเส้นขอบตึก
-                        fillColor: "#FFD700",
-                        fillOpacity: 0.5,
-                        weight: 2
-                    };
+                    // --- ระบบแยกสีตึกอัตโนมัติ ---
+                    let color = "#FFD700"; // สีมาตรฐาน (เหลือง)
+                    let props = JSON.stringify(feature.properties);
+                    
+                    if (props.includes("ประตู")) color = "#ff4757"; // ถ้าเป็นประตู ให้สีแดง
+                    else if (props.includes("อาคาร") || props.includes("ตึก")) color = "#1e90ff"; // ถ้าเป็นตึก ให้สีฟ้า
+                    
+                    return { color: color, fillColor: color, fillOpacity: 0.5, weight: 2 };
                 },
                 onEachFeature: function (feature, layer) {
-                    let popupContent = "<div class='popup-content'><span class='popup-title'>รายละเอียด</span>";
-                    
-                    // วนลูปโชว์ข้อมูลทุกอย่างที่มีใน properties ของแต่ละจุด
-                    if (feature.properties) {
-                        for (let key in feature.properties) {
-                            popupContent += `<b>${key}:</b> ${feature.properties[key]}<br>`;
-                        }
+                    let popupHTML = `<div class='custom-popup'><div class='popup-header'>ข้อมูลสถานที่</div>`;
+                    for (let key in feature.properties) {
+                        popupHTML += `<div class='popup-row'><b>${key}:</b> ${feature.properties[key]}</div>`;
                     }
-                    popupContent += "</div>";
-                    layer.bindPopup(popupContent);
+                    popupHTML += `</div>`;
+                    layer.bindPopup(popupHTML);
 
-                    // เอฟเฟกต์เมื่อเอาเมาส์ชี้
-                    layer.on('mouseover', function() {
-                        this.setStyle({ fillOpacity: 0.8, weight: 3 });
-                    });
-                    layer.on('mouseout', function() {
-                        this.setStyle({ fillOpacity: 0.5, weight: 2 });
-                    });
+                    layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.8, weight: 4 }); });
+                    layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.5, weight: 2 }); });
                 }
             }).addTo(map);
-        })
-        .catch(error => console.error('ไม่สามารถโหลดไฟล์ a.txt ได้:', error));
+        });
 
-    // 4. ระบบระบุตำแหน่งผู้ใช้ (GPS)
-    map.locate({
-        setView: true, 
-        maxZoom: 17, 
-        enableHighAccuracy: true 
-    });
+    // 4. ระบบ GPS ระบุตำแหน่ง
+    var userMarker, userCircle;
 
-    // เมื่อหาตำแหน่งผู้ใช้เจอ
+    function locateUser() {
+        map.locate({ setView: true, maxZoom: 18 });
+    }
+
     function onLocationFound(e) {
+        if (userMarker) {
+            map.removeLayer(userMarker);
+            map.removeLayer(userCircle);
+        }
         var radius = e.accuracy / 2;
-
-        // จุดมาร์คเกอร์ตำแหน่งเรา
-        L.marker(e.latlng).addTo(map)
-            .bindPopup("คุณอยู่บริเวณนี้ (ความแม่นยำ " + radius.toFixed(0) + " เมตร)")
-            .openPopup();
-
-        // วงกลมรัศมีรอบตัวเรา
-        L.circle(e.latlng, radius).addTo(map);
+        userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
+        userCircle = L.circle(e.latlng, radius).addTo(map);
     }
 
     map.on('locationfound', onLocationFound);
+    map.on('locationerror', (e) => alert("เข้าถึงตำแหน่งไม่ได้: " + e.message));
 
-    // เมื่อหาตำแหน่งไม่เจอ
-    function onLocationError(e) {
-        console.log("ไม่สามารถระบุตำแหน่งได้: " + e.message);
-    }
-
-    map.on('locationerror', onLocationError);
+    // รันครั้งแรกตอนเปิดหน้าเว็บ
+    locateUser();
 
 </script>
 </body>
