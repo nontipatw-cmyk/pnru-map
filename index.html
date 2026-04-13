@@ -31,6 +31,25 @@
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; font-size: 24px; color: #1a73e8;
         }
+        .compass {
+            position: absolute;
+            top: 90px;
+            right: 25px;
+            z-index: 1000;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .compass i {
+            font-size: 26px;
+            color: #e53935;
+            transition: transform 0.2s linear;
+        }
     </style>
 </head>
 <body>
@@ -38,6 +57,9 @@
     
     <div class="locate-button" onclick="locateUser()" title="หาตำแหน่งฉัน">
         <i class="fa-solid fa-crosshairs"></i>
+    </div>
+    <div class="compass">
+        <i class="fa-solid fa-location-arrow" id="compassIcon"></i>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -155,7 +177,13 @@
     map.getContainer().addEventListener('contextmenu', function(e) {
         e.preventDefault();
     });
+    const compass = document.getElementById("compassIcon");
 
+        // อัปเดตเข็มทิศตามมุมแผนที่
+    map.on("rotate", function() {
+        const bearing = map.getBearing();
+        compass.style.transform = `rotate(${bearing}deg)`;
+    });
     locateUser();
 </script>
 </body>
