@@ -12,6 +12,7 @@
     <style>
         html, body { height: 100%; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
         #map { height: 100vh; width: 100%; }
+
         .custom-label {
             background: rgba(255, 255, 255, 0.95) !important;
             border: 2px solid #1a73e8 !important;
@@ -24,6 +25,7 @@
             white-space: nowrap;
             pointer-events: none;
         }
+
         .locate-button {
             position: absolute; bottom: 25px; right: 25px; z-index: 1000;
             background: white; width: 52px; height: 52px; border-radius: 50%;
@@ -31,6 +33,8 @@
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; font-size: 24px; color: #1a73e8;
         }
+
+        /* เข็มทิศ */
         .compass {
             position: absolute;
             top: 90px;
@@ -44,7 +48,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: pointer;
         }
+
         .compass i {
             font-size: 26px;
             color: #e53935;
@@ -52,139 +58,163 @@
         }
     </style>
 </head>
-<body>
-    <div id="map"></div>
-    
-    <div class="locate-button" onclick="locateUser()" title="หาตำแหน่งฉัน">
-        <i class="fa-solid fa-crosshairs"></i>
-    </div>
-    <div class="compass">
-        <i class="fa-solid fa-location-arrow" id="compassIcon"></i>
-    </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-rotate@0.2.1/dist/leaflet-rotate-src.js"></script>
+<body>
+<div id="map"></div>
+
+<div class="locate-button" onclick="locateUser()">
+    <i class="fa-solid fa-crosshairs"></i>
+</div>
+
+<div class="compass" id="compassBtn">
+    <i class="fa-solid fa-location-arrow" id="compassIcon"></i>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-rotate@0.2.1/dist/leaflet-rotate-src.js"></script>
 
 <script>
-    const map = L.map('map', { 
-        zoomControl: false,
-        rotate: true,
-        touchRotate: true,
-        touchAngle: true,   // ⭐ เพิ่มให้มือถือหมุนได้จริง
-        rotateControl: false,
-        bearing: 0
-    }).setView([13.878, 100.591], 17);
+const map = L.map('map', { 
+    zoomControl: false,
+    rotate: true,
+    touchRotate: true,
+    touchAngle: true,
+    bearing: 0
+}).setView([13.878, 100.591], 17);
 
-    L.control.zoom({ position: 'topright' }).addTo(map);
+L.control.zoom({ position: 'topright' }).addTo(map);
 
-    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-        attribution: 'Google Maps'
+L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}').addTo(map);
+
+// ===== ปุ่มหมุน =====
+const rotationControl = L.control({ position: 'topright' });
+
+rotationControl.onAdd = function() {
+    const div = L.DomUtil.create('div');
+    div.innerHTML = `
+        <div style="background:white; padding:8px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:6px;">
+            <button onclick="rotateMap(30)">↻</button>
+            <button onclick="rotateMap(-30)">↺</button>
+            <button onclick="resetRotation()">Reset</button>
+        </div>
+    `;
+    return div;
+};
+rotationControl.addTo(map);
+
+function rotateMap(deg) {
+    map.setBearing(map.getBearing() + deg);
+}
+
+function resetRotation() {
+    map.setBearing(0);
+}
+
+// ===== เข็มทิศ =====
+const compass = document.getElementById("compassIcon");
+const compassBtn = document.getElementById("compassBtn");
+
+// หมุนเข็มทิศ (สำคัญ: ติดลบ)
+map.on("rotate", function() {
+    const bearing = map.getBearing();
+    compass.style.transform = `rotate(${-bearing}deg)`;
+});
+
+// reset แบบลื่น
+function smoothResetRotation() {
+    let start = map.getBearing();
+    let duration = 300;
+    let startTime = null;
+
+    function animate(time) {
+        if (!startTime) startTime = time;
+        let progress = time - startTime;
+        let percent = Math.min(progress / duration, 1);
+
+        map.setBearing(start * (1 - percent));
+
+        if (percent < 1) requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+}
+
+compassBtn.addEventListener("click", smoothResetRotation);
+
+// ===== GeoJSON =====
+fetch('data.geojson')
+.then(res => res.json())
+.then(data => {
+    L.geoJSON(data, {
+        style: function(feature) {
+            const text = JSON.stringify(feature.properties || {}).toLowerCase();
+            if (text.includes("ประตู")) return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.55 };
+            if (text.includes("โรงอาหาร")) return { color: "#ff9800", fillColor: "#ff9800", fillOpacity: 0.6 };
+            if (text.includes("ที่นั่ง")) return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4 };
+            return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5 };
+        },
+        onEachFeature: function(feature, layer) {
+            const name = feature.properties.name || "ไม่มีชื่อ";
+            const desc = feature.properties.desc || "";
+
+            layer.bindTooltip(name, {
+                permanent: true,
+                direction: 'center',
+                className: 'custom-label'
+            });
+
+            layer.bindPopup(`<b>${name}</b><br>${desc}`);
+        }
     }).addTo(map);
+});
 
-    // === ปุ่มหมุนซ้าย-ขวา + เข็มทิศ ===
-    const rotationControl = L.control({ position: 'topright' });
+// ===== GPS =====
+let userMarker, userCircle;
 
-    rotationControl.onAdd = function() {
-        const div = L.DomUtil.create('div', 'rotation-control');
-        div.innerHTML = `
-            <div style="background:white; padding:8px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:6px;">
-                <button onclick="rotateMap(30)" style="width:40px;height:40px;font-size:18px;border:none;border-radius:6px;background:#f8f9fa;cursor:pointer;">↻</button>
-                <button onclick="rotateMap(-30)" style="width:40px;height:40px;font-size:18px;border:none;border-radius:6px;background:#f8f9fa;cursor:pointer;">↺</button>
-                <button onclick="resetRotation()" style="font-size:12px;padding:4px 8px;border:none;border-radius:6px;background:#1a73e8;color:white;cursor:pointer;">Reset</button>
-            </div>
-        `;
-        return div;
-    };
-    rotationControl.addTo(map);
+function locateUser() {
+    map.locate({ setView: true, maxZoom: 18 });
+}
 
-    // ฟังก์ชันหมุนแผนที่
-    window.rotateMap = function(degrees) {
-        let currentBearing = map.getBearing ? map.getBearing() : 0;
-        map.setBearing(currentBearing + degrees);
-    };
+map.on('locationfound', function(e) {
+    if (userMarker) map.removeLayer(userMarker);
+    if (userCircle) map.removeLayer(userCircle);
 
-    window.resetRotation = function() {
-        map.setBearing(0);
-    };
+    userMarker = L.marker(e.latlng).addTo(map)
+        .bindPopup("คุณอยู่ที่นี่")
+        .openPopup();
 
-    // === โหลด GeoJSON ===
-    fetch('data.geojson')
-        .then(res => res.json())
-        .then(data => {
-            L.geoJSON(data, {
-                style: function(feature) {
-                    const text = JSON.stringify(feature.properties || {}).toLowerCase();
-                    if (text.includes("ประตู") || text.includes("ทางออก")) return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.55, weight: 3 };
-                    if (text.includes("โรงอาหาร") || text.includes("ร้าน")) return { color: "#ff9800", fillColor: "#ff9800", fillOpacity: 0.6, weight: 2 };
-                    if (text.includes("ที่นั่ง")) return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4, weight: 2, dashArray: '5,5' };
-                    if (text.includes("อาคาร") || text.includes("ตึก")) return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5, weight: 2 };
-                    return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.45, weight: 2 };
-                },
-                onEachFeature: function(feature, layer) {
-                    const name = feature.properties.name || "สถานที่ไม่มีชื่อ";
-                    const desc = feature.properties.desc || "";
+    userCircle = L.circle(e.latlng, {
+        radius: e.accuracy / 2
+    }).addTo(map);
+});
 
-                    layer.bindTooltip(name, {
-                        permanent: true,
-                        direction: 'center',
-                        className: 'custom-label'
-                    }).openTooltip();
+// ===== เม้าขวาหมุน =====
+let isRightDragging = false;
+let lastX = 0;
 
-                    layer.bindPopup(`<b>${name}</b>${desc ? `<br><small>${desc}</small>` : ''}`);
-                }
-            }).addTo(map);
-        });
+const container = map.getContainer();
 
-    // === ตำแหน่งผู้ใช้ ===
-    let userMarker, userCircle;
-    function locateUser() { map.locate({ setView: true, maxZoom: 18 }); }
+container.addEventListener('mousedown', function(e) {
+    if (e.button === 2) {
+        isRightDragging = true;
+        lastX = e.clientX;
+    }
+});
 
-    map.on('locationfound', function(e) {
-        if (userMarker) map.removeLayer(userMarker);
-        if (userCircle) map.removeLayer(userCircle);
-        userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
-        userCircle = L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(map);
-    });
+container.addEventListener('mousemove', function(e) {
+    if (isRightDragging) {
+        let dx = e.clientX - lastX;
+        map.setBearing(map.getBearing() + dx * 0.8);
+        lastX = e.clientX;
+    }
+});
 
-    // === เมาส์ขวาหมุน (ลื่น + ไม่ค้าง) ===
-    let isRightDragging = false;
-    let lastX = 0;
+container.addEventListener('mouseup', () => isRightDragging = false);
+document.addEventListener('mouseup', () => isRightDragging = false);
 
-    map.getContainer().addEventListener('mousedown', function(e) {
-        if (e.button === 2) {
-            isRightDragging = true;
-            lastX = e.clientX;
-        }
-    });
+container.addEventListener('contextmenu', e => e.preventDefault());
 
-    map.getContainer().addEventListener('mousemove', function(e) {
-        if (isRightDragging) {
-            let dx = e.clientX - lastX;
-            let currentBearing = map.getBearing();
-            map.setBearing(currentBearing + dx * 0.8); // ⭐ ปรับให้ลื่น
-            lastX = e.clientX;
-        }
-    });
-
-    map.getContainer().addEventListener('mouseup', function() {
-        isRightDragging = false;
-    });
-
-    document.addEventListener('mouseup', function() { // ⭐ กันค้าง
-        isRightDragging = false;
-    });
-
-    map.getContainer().addEventListener('contextmenu', function(e) {
-        e.preventDefault();
-    });
-    const compass = document.getElementById("compassIcon");
-
-        // อัปเดตเข็มทิศตามมุมแผนที่
-    map.on("rotate", function() {
-        const bearing = map.getBearing();
-        compass.style.transform = `rotate(${bearing}deg)`;
-    });
-    locateUser();
+locateUser();
 </script>
 </body>
 </html>
