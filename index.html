@@ -41,11 +41,16 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-rotate@0.2.1/dist/leaflet-rotate-src.js"></script>
 
 <script>
     const map = L.map('map', { 
         zoomControl: false,
-        rotate: true   // เปิดการหมุนแผนที่
+        rotate: true,
+        touchRotate: true,
+        touchAngle: true,   // ⭐ เพิ่มให้มือถือหมุนได้จริง
+        rotateControl: false,
+        bearing: 0
     }).setView([13.878, 100.591], 17);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
@@ -80,7 +85,7 @@
         map.setBearing(0);
     };
 
-    // === ส่วนโหลด GeoJSON (คงเดิม) ===
+    // === โหลด GeoJSON ===
     fetch('data.geojson')
         .then(res => res.json())
         .then(data => {
@@ -108,15 +113,49 @@
             }).addTo(map);
         });
 
-    // ปุ่มหาตำแหน่ง (คงเดิม)
+    // === ตำแหน่งผู้ใช้ ===
     let userMarker, userCircle;
     function locateUser() { map.locate({ setView: true, maxZoom: 18 }); }
+
     map.on('locationfound', function(e) {
         if (userMarker) map.removeLayer(userMarker);
         if (userCircle) map.removeLayer(userCircle);
         userMarker = L.marker(e.latlng).addTo(map).bindPopup("คุณอยู่ที่นี่").openPopup();
         userCircle = L.circle(e.latlng, { radius: e.accuracy / 2 }).addTo(map);
     });
+
+    // === เมาส์ขวาหมุน (ลื่น + ไม่ค้าง) ===
+    let isRightDragging = false;
+    let lastX = 0;
+
+    map.getContainer().addEventListener('mousedown', function(e) {
+        if (e.button === 2) {
+            isRightDragging = true;
+            lastX = e.clientX;
+        }
+    });
+
+    map.getContainer().addEventListener('mousemove', function(e) {
+        if (isRightDragging) {
+            let dx = e.clientX - lastX;
+            let currentBearing = map.getBearing();
+            map.setBearing(currentBearing + dx * 0.8); // ⭐ ปรับให้ลื่น
+            lastX = e.clientX;
+        }
+    });
+
+    map.getContainer().addEventListener('mouseup', function() {
+        isRightDragging = false;
+    });
+
+    document.addEventListener('mouseup', function() { // ⭐ กันค้าง
+        isRightDragging = false;
+    });
+
+    map.getContainer().addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
     locateUser();
 </script>
 </body>
