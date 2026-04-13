@@ -13,39 +13,22 @@
         body { margin: 0; font-family: 'Sarabun', sans-serif; }
         #map { height: 100vh; width: 100%; }
         
-        /* ปุ่ม Locate ตรงมุมจอ */
+        /* ปุ่ม Locate */
         .locate-button {
-            position: absolute;
-            bottom: 25px;
-            right: 25px;
-            z-index: 1000;
-            background: white;
-            padding: 12px;
-            border-radius: 50%;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            cursor: pointer;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #1a73e8;
-            transition: all 0.3s;
+            position: absolute; bottom: 25px; right: 25px; z-index: 1000;
+            background: white; padding: 12px; border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3); cursor: pointer;
+            width: 50px; height: 50px; display: flex;
+            align-items: center; justify-content: center;
+            color: #1a73e8; transition: all 0.3s;
         }
         .locate-button:hover { background: #f1f3f4; transform: scale(1.1); }
 
-        /* ปรับแต่ง Popup ให้ดูโปร */
-        .custom-popup .leaflet-popup-content-wrapper {
-            border-radius: 12px;
-            padding: 8px;
-        }
+        /* ปรับแต่ง Popup */
+        .custom-popup .leaflet-popup-content-wrapper { border-radius: 12px; padding: 8px; }
         .popup-header {
-            font-weight: bold;
-            color: #1a73e8;
-            font-size: 16px;
-            border-bottom: 2px solid #e8eaed;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
+            font-weight: bold; color: #1a73e8; font-size: 16px;
+            border-bottom: 2px solid #e8eaed; margin-bottom: 8px; padding-bottom: 4px;
         }
         .popup-row { margin: 4px 0; font-size: 13px; }
     </style>
@@ -62,45 +45,64 @@
 <script>
     // 1. ตั้งค่าแผนที่
     var map = L.map('map', { zoomControl: false }).setView([13.878, 100.591], 17);
-    
-    // ย้ายปุ่มซูมไปไว้ที่อื่นไม่ให้ทับกับปุ่มเรา
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // 2. แผนที่ดาวเทียม Google
+    // 2. ใช้แผนที่ดาวเทียม Google (แบบมีชื่อถนน Hybrid)
     L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: 'Google Maps'
     }).addTo(map);
 
-    // 3. ฟังก์ชันดึงข้อมูลจาก a.txt และแยกประเภทสี
+    // 3. ระบบแยกสีตามประเภท
+    function getFeatureStyle(feature) {
+        let type = feature.properties.type;
+        let name = JSON.stringify(feature.properties); // ดึงข้อมูลทั้งหมดมาเช็คคำ
+
+        // ลำดับการเช็คสี: ประตู > โรงอาหาร > ตึก/อาคาร > อื่นๆ
+        if (type === 'gate' || name.includes("ประตู")) {
+            return { color: "#ff4757", fillColor: "#ff4757", fillOpacity: 0.5, weight: 3 }; // แดง
+        } else if (type === 'canteen' || name.includes("โรงอาหาร")) {
+            return { color: "#ffa500", fillColor: "#ffa500", fillOpacity: 0.6, weight: 2 }; // ส้ม
+        } else if (type === 'building' || name.includes("อาคาร") || name.includes("ตึก")) {
+            return { color: "#1e90ff", fillColor: "#1e90ff", fillOpacity: 0.5, weight: 2 }; // ฟ้า
+        } else if (type === 'seating') {
+            return { color: "#2ed573", fillColor: "#2ed573", fillOpacity: 0.4, weight: 2, dashArray: '5, 5' }; // เขียวเส้นประ
+        }
+        
+        return { color: "#FFD700", fillColor: "#FFD700", fillOpacity: 0.4, weight: 2 }; // สีเหลืองมาตรฐาน
+    }
+
+    // 4. ดึงข้อมูลจาก a.txt
     fetch('a.txt')
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             L.geoJSON(data, {
-                style: function(feature) {
-                    // --- ระบบแยกสีตึกอัตโนมัติ ---
-                    let color = "#FFD700"; // สีมาตรฐาน (เหลือง)
-                    let props = JSON.stringify(feature.properties);
-                    
-                    if (props.includes("ประตู")) color = "#ff4757"; // ถ้าเป็นประตู ให้สีแดง
-                    else if (props.includes("อาคาร") || props.includes("ตึก")) color = "#1e90ff"; // ถ้าเป็นตึก ให้สีฟ้า
-                    
-                    return { color: color, fillColor: color, fillOpacity: 0.5, weight: 2 };
-                },
+                style: getFeatureStyle,
                 onEachFeature: function (feature, layer) {
+                    // สร้าง Popup สวยๆ
                     let popupHTML = `<div class='custom-popup'><div class='popup-header'>ข้อมูลสถานที่</div>`;
+                    
+                    // วนลูปโชว์ Properties ทั้งหมดที่มี
                     for (let key in feature.properties) {
-                        popupHTML += `<div class='popup-row'><b>${key}:</b> ${feature.properties[key]}</div>`;
+                        if(key !== 'type') { // ไม่โชว์คำว่า type ใน popup
+                            popupHTML += `<div class='popup-row'><b>${key}:</b> ${feature.properties[key]}</div>`;
+                        }
                     }
                     popupHTML += `</div>`;
                     layer.bindPopup(popupHTML);
 
-                    layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.8, weight: 4 }); });
-                    layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.5, weight: 2 }); });
+                    // Effect ตอนเอาเมาส์ชี้
+                    layer.on('mouseover', function() { 
+                        this.setStyle({ fillOpacity: 0.8, weight: 4 }); 
+                    });
+                    layer.on('mouseout', function() { 
+                        this.setStyle({ fillOpacity: 0.5, weight: 2 }); 
+                    });
                 }
             }).addTo(map);
-        });
+        })
+        .catch(err => console.error("โหลดข้อมูลไม่สำเร็จ กรุณาตรวจสอบไฟล์ a.txt", err));
 
-    // 4. ระบบ GPS ระบุตำแหน่ง
+    // 5. ระบบ GPS (เหมือนของเดิมเป๊ะ)
     var userMarker, userCircle;
 
     function locateUser() {
@@ -118,9 +120,9 @@
     }
 
     map.on('locationfound', onLocationFound);
-    map.on('locationerror', (e) => alert("เข้าถึงตำแหน่งไม่ได้: " + e.message));
+    map.on('locationerror', (e) => console.log("GPS Error: " + e.message));
 
-    // รันครั้งแรกตอนเปิดหน้าเว็บ
+    // เริ่มหาตำแหน่งทันทีที่เปิดหน้าเว็บ
     locateUser();
 
 </script>
