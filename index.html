@@ -4,12 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PNRU Interactive Map</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
-        body { margin: 0; }
+        body { margin: 0; font-family: 'Sarabun', sans-serif; }
         #map { height: 100vh; width: 100%; }
-        .popup-content { font-family: 'Sarabun', sans-serif; font-size: 14px; }
+        
+        /* ตกแต่ง Popup */
+        .popup-content {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .popup-title {
+            color: #1a73e8;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -17,45 +31,80 @@
 <div id="map"></div>
 
 <script>
-    // 1. ตั้งค่าแผนที่
+    // 1. สร้างแผนที่ (พิกัดกลาง มรภ.พระนคร)
     var map = L.map('map').setView([13.878, 100.591], 17);
 
-    // 2. แผนที่ดาวเทียม
+    // 2. ใช้แผนที่ดาวเทียม Google Hybrid
     L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         attribution: 'Google Maps'
     }).addTo(map);
 
-    // 3. ฟังก์ชันดึงข้อมูลจากไฟล์ a.txt (GeoJSON)
+    // 3. ระบบดึงข้อมูลจากไฟล์ a.txt มาวาดเป็นตึกและจุดต่างๆ
     fetch('a.txt')
         .then(response => response.json())
         .then(data => {
             L.geoJSON(data, {
                 style: function(feature) {
                     return {
-                        color: "#FFD700",
-                        weight: 2,
-                        fillOpacity: 0.5
+                        color: "#FFD700", // สีเส้นขอบตึก
+                        fillColor: "#FFD700",
+                        fillOpacity: 0.5,
+                        weight: 2
                     };
                 },
                 onEachFeature: function (feature, layer) {
-                    // ดึงข้อมูลจาก properties มาโชว์ใน Popup
-                    let popupText = "<div class='popup-content'><b>รายละเอียดอาคาร/จุด</b><br>";
+                    let popupContent = "<div class='popup-content'><span class='popup-title'>รายละเอียด</span>";
                     
+                    // วนลูปโชว์ข้อมูลทุกอย่างที่มีใน properties ของแต่ละจุด
                     if (feature.properties) {
                         for (let key in feature.properties) {
-                            popupText += `<b>${key}:</b> ${feature.properties[key]}<br>`;
+                            popupContent += `<b>${key}:</b> ${feature.properties[key]}<br>`;
                         }
                     }
-                    popupText += "</div>";
-                    layer.bindPopup(popupText);
+                    popupContent += "</div>";
+                    layer.bindPopup(popupContent);
 
-                    // เอฟเฟกต์ Hover
-                    layer.on('mouseover', function() { this.setStyle({ fillOpacity: 0.8 }); });
-                    layer.on('mouseout', function() { this.setStyle({ fillOpacity: 0.5 }); });
+                    // เอฟเฟกต์เมื่อเอาเมาส์ชี้
+                    layer.on('mouseover', function() {
+                        this.setStyle({ fillOpacity: 0.8, weight: 3 });
+                    });
+                    layer.on('mouseout', function() {
+                        this.setStyle({ fillOpacity: 0.5, weight: 2 });
+                    });
                 }
             }).addTo(map);
         })
-        .catch(error => console.error('Error loading GeoJSON:', error));
+        .catch(error => console.error('ไม่สามารถโหลดไฟล์ a.txt ได้:', error));
+
+    // 4. ระบบระบุตำแหน่งผู้ใช้ (GPS)
+    map.locate({
+        setView: true, 
+        maxZoom: 17, 
+        enableHighAccuracy: true 
+    });
+
+    // เมื่อหาตำแหน่งผู้ใช้เจอ
+    function onLocationFound(e) {
+        var radius = e.accuracy / 2;
+
+        // จุดมาร์คเกอร์ตำแหน่งเรา
+        L.marker(e.latlng).addTo(map)
+            .bindPopup("คุณอยู่บริเวณนี้ (ความแม่นยำ " + radius.toFixed(0) + " เมตร)")
+            .openPopup();
+
+        // วงกลมรัศมีรอบตัวเรา
+        L.circle(e.latlng, radius).addTo(map);
+    }
+
+    map.on('locationfound', onLocationFound);
+
+    // เมื่อหาตำแหน่งไม่เจอ
+    function onLocationError(e) {
+        console.log("ไม่สามารถระบุตำแหน่งได้: " + e.message);
+    }
+
+    map.on('locationerror', onLocationError);
+
 </script>
 </body>
 </html>
