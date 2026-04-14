@@ -109,8 +109,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "ตึกเรียนหลัก วิศวกรรมโยธา",
-        "desc": "ที่นั่งสำหรับ สาขา วิศวกรรมโยธา"
+        "name": "ตึก ITM",
+        "desc": "ตึกเรียนหลัก วิศวกรรมโยธา"
       },
       "geometry": {
         "type": "Polygon",
@@ -140,7 +140,7 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "ร้านป้าเยาว์",
+        "name": "ป้าเยา​ coffee",
         "desc": "ที่นั่งเสรี"
       },
       "geometry": {
@@ -151,7 +151,7 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "ตึกเซเว่น",
+        "name": "อาคารเชิงบูรณาการ หรือ ตึกเซเว่น",
         "desc": "ติดต่อ กยศ. / รด."
       },
       "geometry": {
@@ -257,8 +257,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "ตึกเรียนหลัก สาขา สถาปัต",
-        "desc": ""
+        "name": "ตึกสถาปัตยกรรม",
+        "desc": "ตึกเรียนหลัก สาขา สถาปัต"
        },
         "geometry": {
           "type": "Polygon",
@@ -301,8 +301,8 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "อาคาร 4 หรือ ตึกเกี่ยวกับการเงิน",
-        "desc": ""
+        "name": "ตึกธุรการ หรือ อาคาร 4 ",
+        "desc": "ตึกเกี่ยวกับการเงิน"
       },
       "geometry": {
         "type": "Polygon",
