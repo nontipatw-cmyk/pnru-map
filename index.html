@@ -33,28 +33,6 @@
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; font-size: 24px; color: #1a73e8;
         }
-
-        /* เข็มทิศ */
-        .compass {
-            position: absolute;
-            bottom: 25px;   /* ⬅️ ย้ายลงล่าง */
-            left: 25px;     /* ⬅️ ย้ายไปซ้าย */
-            z-index: 1000;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .compass i {
-            font-size: 26px;
-            color: #e53935;
-            transition: transform 0.2s linear;
-        }
     </style>
 </head>
 
@@ -63,10 +41,6 @@
 
 <div class="locate-button" onclick="locateUser()">
     <i class="fa-solid fa-crosshairs"></i>
-</div>
-
-<div class="compass" id="compassBtn">
-    <i class="fa-solid fa-location-arrow" id="compassIcon"></i>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -108,37 +82,6 @@ function rotateMap(deg) {
 function resetRotation() {
     map.setBearing(0);
 }
-
-// ===== เข็มทิศ =====
-const compass = document.getElementById("compassIcon");
-const compassBtn = document.getElementById("compassBtn");
-
-// หมุนเข็มทิศ (สำคัญ: ติดลบ)
-map.on("rotate", function() {
-    const bearing = map.getBearing();
-    compass.style.transform = `rotate(${-bearing}deg)`;
-});
-
-// reset แบบลื่น
-function smoothResetRotation() {
-    let start = map.getBearing();
-    let duration = 300;
-    let startTime = null;
-
-    function animate(time) {
-        if (!startTime) startTime = time;
-        let progress = time - startTime;
-        let percent = Math.min(progress / duration, 1);
-
-        map.setBearing(start * (1 - percent));
-
-        if (percent < 1) requestAnimationFrame(animate);
-    }
-
-    requestAnimationFrame(animate);
-}
-
-compassBtn.addEventListener("click", smoothResetRotation);
 
 // ===== GeoJSON =====
 fetch('data.geojson')
